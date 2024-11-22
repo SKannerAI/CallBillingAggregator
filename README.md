@@ -5,6 +5,7 @@ docker build -t myapp:latest .
 
 #List the docker images for verification
 docker images
+
 #Run the image by providing the image & container(your choice) name
 docker run --name <container-name> <image-name>
 
