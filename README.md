@@ -69,7 +69,7 @@ kind: Deployment
 metadata:
   name: my-app
 spec:
-  replicas: 3
+  replicas: 3 # Initial number of pods
   selector:
     matchLabels:
       app: my-app
@@ -79,10 +79,49 @@ spec:
         app: my-app
     spec:
       containers:
-      - name: my-app
+      - name: my-app-container
         image: <registry>/<your-image-name>:<tag>
         ports:
-        - containerPort: 80
+        - containerPort: 8080
+        resources:       # Required for Horizontal Pod Autoscaler (HPA) to work
+          requests:      # Requests are the minimum resources guaranteed to the container
+            cpu: 100m    # 100 millicores (0.1 CPU core) - the minimum CPU the container needs[1000m = 1 CPU core]
+            memory: 128Mi # 128 Megabytes of RAM - the minimum memory the container needs
+          limits:         # Limits are the maximum resources the container can use
+            cpu: 500m     # 500 millicores (0.5 CPU core) - the container cannot use more than this
+            memory: 512Mi # 512 Megabytes - the container cannot exceed this memory usage
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  minReplicas: 2      # Minimum number of pods
+  maxReplicas: 10     # Maximum number of pods
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # Scale when average CPU > 70%
+  behavior:  # Optional: Fine-tune scaling behavior
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 min before scaling down
+      policies:
+      - type: Percent
+        value: 50  # Scale down max 50% of pods at once
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60   # Wait 1 min before scaling up
+      policies:
+      - type: Percent
+        value: 100  # Can double pods at once
+        periodSeconds: 60
 ```
 
 **b. Service**
